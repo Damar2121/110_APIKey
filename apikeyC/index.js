@@ -16,8 +16,8 @@ const API_PREFIX = 'sk-itumy-v1-api_';
 const pool = mysql.createPool({
   host: 'localhost',      // atau IP server DB Anda
   user: 'root',           // user DB Anda
-  password: 'passwordanda', // password DB Anda
-  database: 'nama_db_anda', // nama database Anda
+  password: '200421D@m2121', // password DB Anda
+  database: 'apikey', // nama database Anda
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
