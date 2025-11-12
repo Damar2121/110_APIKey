@@ -17,7 +17,8 @@ const pool = mysql.createPool({
   host: 'localhost',      // atau IP server DB Anda
   user: 'root',           // user DB Anda
   password: '200421D@m2121', // password DB Anda
-  database: 'apikey', // nama database Anda
+  database: 'apikey',
+  port: 3309, // nama database Anda
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
