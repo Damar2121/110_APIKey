@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Generate API Key</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  
   <style>
     body {
       margin: 0;
@@ -12,15 +16,17 @@
       align-items: center;
       justify-content: center;
       flex-direction: column;
-      background-color: #0d0d0d;
-      color: #f1f1f1;
-      font-family: "Segoe UI", sans-serif;
+      /* Background warna dark violet */
+      background-color: #1c152a; /* Darker violet */
+      color: #e8e0f0; /* Off-white for text */
+      font-family: "Inter", sans-serif;
     }
 
     h1 {
       font-weight: 500;
-      margin-bottom: 20px;
-      color: #00ffff;
+      margin-bottom: 25px;
+      /* Aksen warna violet cerah */
+      color: #bb86fc; /* Bright violet */
       letter-spacing: 1px;
     }
 
@@ -29,10 +35,17 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      /* Warna card lebih gelap */
+      background-color: #2a203d; 
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      border: 1px solid #4a3e5c; /* Border violet */
     }
 
-    button {
-      background: linear-gradient(90deg, #00ffff, #0077ff);
+    button#generateBtn {
+      /* Gradient violet */
+      background: linear-gradient(90deg, #bb86fc, #6200ee);
       border: none;
       color: white;
       padding: 12px 28px;
@@ -41,12 +54,13 @@
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.3s ease;
-      margin-bottom: 20px;
+      margin-bottom: 25px;
     }
 
-    button:hover {
-      box-shadow: 0 0 12px #00ffffaa;
-      transform: translateY(-2px);
+    button#generateBtn:hover {
+      /* Efek shadow violet */
+      box-shadow: 0 0 15px #bb86fcaa; 
+      transform: scale(1.05);
     }
 
     .textarea-wrapper {
@@ -57,41 +71,57 @@
     textarea {
       width: 100%;
       height: 120px;
-      background-color: #1a1a1a;
-      color: #00ffff;
-      border: 1px solid #333;
+      /* Background textarea lebih gelap lagi */
+      background-color: #1a132e; 
+      color: #bb86fc; /* Warna teks key violet cerah */
+      border: 1px solid #4a3e5c;
       border-radius: 8px;
-      padding: 10px;
+      padding: 15px;
       resize: none;
-      font-size: 14px;
-      outline: none;
+      font-size: 16px;
+      font-weight: 500;
       text-align: center;
+      line-height: 1.5;
+      outline: none;
       box-sizing: border-box;
+      padding-bottom: 40px; 
+    }
+
+    textarea::placeholder {
+      color: #7a6a8c; /* Placeholder warna violet lebih redup */
     }
 
     .copy-btn {
       position: absolute;
-      bottom: 8px;
-      right: 8px;
-      background: linear-gradient(90deg, #00ffff, #0077ff);
+      bottom: 10px;
+      right: 10px;
+      /* Tombol copy violet gelap */
+      background-color: #4a3e5c; 
       border: none;
-      color: white;
-      padding: 6px 10px;
+      color: #e8e0f0;
+      padding: 6px 12px;
       font-size: 12px;
+      font-weight: 500;
       border-radius: 6px;
       cursor: pointer;
-      transition: 0.3s;
+      transition: all 0.2s ease;
     }
 
     .copy-btn:hover {
-      box-shadow: 0 0 8px #00ffffaa;
+      background-color: #5a4e6c; /* Hover violet sedikit cerah */
+    }
+    
+    .copy-btn.copied {
+      /* Feedback visual saat berhasil copy */
+      background-color: #bb86fc; /* Violet cerah */
+      color: #1a132e; /* Teks dark violet */
     }
 
     footer {
       position: absolute;
-      bottom: 10px;
+      bottom: 20px;
       font-size: 12px;
-      color: #666;
+      color: #7a6a8c; /* Footer text violet redup */
     }
   </style>
 </head>
@@ -107,30 +137,81 @@
 
   <footer>© 2025 Damar Sadewa</footer>
 
- <script>
-  const apiKeyArea = document.getElementById('apiKey');
-  const generateBtn = document.getElementById('generateBtn');
-  const copyBtn = document.getElementById('copyBtn');
+  <script>
+    const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'; // Tetap sama
+    const API_PREFIX = 'sk-itumy-v1-api_'; // Dari server-side
 
-  generateBtn.addEventListener('click', async () => {
-    apiKeyArea.value = "Memproses...";
-    try {
-      const res = await fetch('/apikeyc/create', { method: 'POST' });
-      const data = await res.json();
-      apiKeyArea.value = data.success ? data.apiKey : "Gagal membuat API key!";
-    } catch (err) {
-      console.error(err);
-      apiKeyArea.value = "Terjadi kesalahan koneksi.";
+    /**
+     * Fungsi untuk efek 'scramble' yang menarik
+     */
+    function scrambleEffect(targetElement, finalValue) {
+      let duration = 500; // Total durasi efek (ms)
+      let intervalRate = 50; // Seberapa cepat ganti karakternya (ms)
+      let elapsed = 0;
+      
+      targetElement.value = ''; // Kosongkan dulu
+
+      // Tampilkan placeholder atau pesan sementara
+      targetElement.placeholder = "Generating..."; 
+      
+      const interval = setInterval(() => {
+        elapsed += intervalRate;
+        if (elapsed >= duration) {
+          clearInterval(interval);
+          targetElement.value = finalValue; // Set nilai final
+          targetElement.placeholder = "API Key akan muncul di sini..."; // Kembalikan placeholder
+          return;
+        }
+        
+        // Buat teks acak sepanjang finalValue
+        let scrambledText = '';
+        for (let i = 0; i < finalValue.length; i++) {
+          scrambledText += CHARS[Math.floor(Math.random() * CHARS.length)];
+        }
+        targetElement.value = scrambledText;
+        
+      }, intervalRate);
     }
-  });
 
-  copyBtn.addEventListener('click', () => {
-    if (apiKeyArea.value.trim() === "" || apiKeyArea.value === "Memproses...") return;
-    navigator.clipboard.writeText(apiKeyArea.value);
-    copyBtn.textContent = "Copied!";
-    setTimeout(() => (copyBtn.textContent = "Copy"), 1500);
-  });
-</script>
+    const apiKeyArea = document.getElementById('apiKey');
+    const generateBtn = document.getElementById('generateBtn');
+    const copyBtn = document.getElementById('copyBtn');
+
+    generateBtn.addEventListener('click', async () => {
+      // Tidak perlu set 'Memproses...' di sini, scrambleEffect akan handle
+      try {
+        const res = await fetch('/apikeyc/create', { method: 'POST' });
+        const data = await res.json();
+        
+        if (data.success) {
+          // Panggil scrambleEffect untuk menampilkan API key
+          scrambleEffect(apiKeyArea, data.apiKey);
+        } else {
+          apiKeyArea.value = data.message || "Gagal membuat API key!";
+          apiKeyArea.placeholder = "Gagal!"; // Update placeholder
+        }
+      } catch (err) {
+        console.error("Error saat fetch API:", err);
+        apiKeyArea.value = "Terjadi kesalahan koneksi.";
+        apiKeyArea.placeholder = "Error!"; // Update placeholder
+      }
+    });
+
+    copyBtn.addEventListener('click', () => {
+      if (apiKeyArea.value.trim() === "" || apiKeyArea.value === "Memproses..." || apiKeyArea.value.startsWith("Gagal") || apiKeyArea.value.startsWith("Terjadi")) {
+        return alert("Belum ada API key yang bisa disalin!");
+      }
+      navigator.clipboard.writeText(apiKeyArea.value);
+      
+      copyBtn.textContent = "Copied!";
+      copyBtn.classList.add('copied'); // Tambah class untuk styling
+      
+      setTimeout(() => {
+        copyBtn.textContent = "Copy";
+        copyBtn.classList.remove('copied'); // Hapus class
+      }, 1500);
+    });
+  </script>
 
 </body>
 </html>
