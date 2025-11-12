@@ -1,40 +1,56 @@
 const express = require('express');
 const path = require('path');
-const crypto = require('crypto'); // Sudah benar
+const crypto = require('crypto');
 const app = express();
 const port = 3000;
 
-// --- PENYEMPURNAAN ---
-// Definisikan prefix di satu tempat.
-// Jadi kalau mau ganti, cukup ganti di sini.
+// --- BAGIAN 1: KONEKSI DATABASE ---
+// Gunakan 'mysql2/promise' agar bisa pakai async/await
+const mysql = require('mysql2/promise'); 
+
+// Definisikan prefix di satu tempat
 const API_PREFIX = 'sk-itumy-v1-api_';
 
+// Buat 'Pool' Koneksi. Pool lebih efisien daripada koneksi tunggal.
+// Ganti ini dengan kredensial database Anda
+const pool = mysql.createPool({
+  host: 'localhost',      // atau IP server DB Anda
+  user: 'root',           // user DB Anda
+  password: 'passwordanda', // password DB Anda
+  database: 'nama_db_anda', // nama database Anda
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
+
 // Middleware
-// FIX 1: 'dirname' diubah menjadi '__dirname' (dengan dua underscore)
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 // Route utama kirim index.html
 app.get('/', (req, res) => {
-  // FIX 2: 'dirname' diubah menjadi '__dirname'
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 🔑 Route untuk generate API key dengan prefix
-app.post('/apikeyc/create', (req, res) => {
+// --- BAGIAN 2: MODIFIKASI ROUTE '/apikeyc/create' ---
+// Kita ubah menjadi 'async' untuk menunggu query DB
+app.post('/apikeyc/create', async (req, res) => {
   try {
     const rawKey = crypto.randomBytes(32).toString('hex');
-    
-    // FIX 3: String harus pakai backticks (``) atau tanda kutip (+)
-    // Variabel tidak bisa langsung ditempel seperti itu.
     const apiKey = `${API_PREFIX}${rawKey}`;
+
+    // --- LOGIKA BARU: Simpan ke Database ---
+    // Jalankan kueri INSERT
+    await pool.query('INSERT INTO api_keys (api_key) VALUES (?)', [apiKey]);
+    // ------------------------------------
 
     res.json({
       success: true,
       apiKey: apiKey
     });
   } catch (err) {
-    console.error('Error generate API key:', err);
+    // Tangani error, misal jika key duplikat (meski kemungkinannya kecil)
+    console.error('Error generate atau simpan API key:', err);
     res.status(500).json({
       success: false,
       message: 'Terjadi kesalahan saat membuat API key'
@@ -42,43 +58,49 @@ app.post('/apikeyc/create', (req, res) => {
   }
 });
 
-// ✅ Route untuk cek validitas API key
-app.post('/checkapi', (req, res) => {
+// --- BAGIAN 3: MODIFIKASI ROUTE '/checkapi' (Inti Permintaan Anda) ---
+// Kita ubah menjadi 'async' untuk menunggu query DB
+app.post('/checkapi', async (req, res) => {
   try {
     const { apiKey } = req.body;
 
     if (!apiKey) {
       return res.status(400).json({
-        success: false,
-        message: 'API key tidak ditemukan dalam request body'
+        success: false, message: 'API key tidak ditemukan'
       });
     }
 
-    // Gunakan konstanta yang sudah didefinisi di atas
+    // 1. Validasi Format (Fast Fail)
+    //    Ini bagus untuk performa, jadi kita tidak perlu query DB
+    //    jika formatnya saja sudah jelas salah.
     if (!apiKey.startsWith(API_PREFIX)) {
       return res.status(400).json({
-        success: false,
-        message: 'Format API key tidak valid'
+        success: false, message: 'Format API key tidak valid'
       });
     }
 
-    // Gunakan konstanta lagi
-    const rawPart = apiKey.replace(API_PREFIX, '');
-
-    // Logika regex Anda sudah TEPAT! 32 bytes = 64 karakter hex.
-    const isHex = /^[a-f0-9]{64}$/i.test(rawPart);
-    if (!isHex) {
-      return res.status(400).json({
+    // 2. Validasi Keberadaan (Database Check)
+    // --- LOGIKA BARU: Cek ke Database ---
+    const [rows] = await pool.query(
+      'SELECT api_key FROM api_keys WHERE api_key = ? LIMIT 1', 
+      [apiKey]
+    );
+    // ----------------------------------
+    
+    // Jika 'rows' punya isi (panjangnya > 0), berarti key ditemukan
+    if (rows.length > 0) {
+      return res.json({
+        success: true,
+        message: 'API key valid dan terdaftar'
+      });
+    } else {
+      // Jika tidak ada hasil, key tidak valid/tidak terdaftar
+      return res.status(401).json({ // 401 = Unauthorized
         success: false,
-        message: 'API key tidak valid (harus 64 karakter hex)'
+        message: 'API key tidak valid atau tidak terdaftar'
       });
     }
 
-    // --- CATATAN PENTING ADA DI BAWAH ---
-    return res.json({
-      success: true,
-      message: 'Format API key valid'
-    });
   } catch (err) {
     console.error('Error checking API key:', err);
     res.status(500).json({
@@ -90,6 +112,6 @@ app.post('/checkapi', (req, res) => {
 
 
 app.listen(port, () => {
-  // FIX 4: console.log perlu tanda kutip
   console.log(`Server berjalan di http://localhost:${port}`);
+  console.log('Terhubung ke database MySQL...');
 });
